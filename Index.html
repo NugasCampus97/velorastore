@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velora Store By Mamaama</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Berlin Sans FB, sans-serif; }
+    body { background: linear-gradient(to bottom, #f3b751, #ffffff); padding: 20px; color: #444; }
+    .container { max-width: 1200px; margin: auto; }
+    .header, .card, .section { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .header h1 { font-size: 36px; color: #5c4b3b; }
+    .header p { color: #8a7b6a; margin-top: 8px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .card h2 { font-size: 18px; margin-bottom: 10px; }
+    .card p { font-size: 28px; font-weight: bold; }
+    input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; }
+    button { padding: 10px 15px; border: none; border-radius: 10px; cursor: pointer; margin: 4px; }
+    .btn-main { background: #5c4b3b; color: white; }
+    .btn-in { background: #4caf50; color: white; }
+    .btn-out { background: #ff9800; color: white; }
+    .btn-delete { background: #f44336; color: white; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+    .transaction-item { border: 1px solid #eee; padding: 12px; border-radius: 12px; margin-bottom: 10px; }
+    @media(max-width:768px){ table, thead, tbody, th, td, tr { display:block; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header" style="display:flex; align-items:center; gap:20px;">
+     <img src="Logo.png" alt="Velora Logo" style="width:140px; height:140px; object-fit:contain; border-radius:50%;">
+      <div>
+      <h1>Velora Store By Mamaama</h1>
+      <p>Inventory Management - Aksesoris & Barang-barang Unik</p>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card"><h2>Total Produk</h2><p id="totalProducts">0</p></div>
+      <div class="card"><h2>Total Stok</h2><p id="totalStock">0</p></div>
+      <div class="card"><h2>Kategori</h2><p id="totalCategories">0</p></div>
+    </div>
+
+    <div class="section">
+      <h2>Tambah Produk Baru</h2>
+      <input type="text" id="productName" placeholder="Nama Produk">
+      <input type="text" id="productCategory" placeholder="Kategori">
+      <input type="number" id="productStock" placeholder="Stok">
+      <input type="number" id="productPrice" placeholder="Harga">
+      <button class="btn-main" onclick="addProduct()">Tambah Produk</button>
+    </div>
+
+    <div class="section">
+      <input type="text" id="search" placeholder="Cari produk atau kategori..." onkeyup="renderProducts()">
+      <table>
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Kategori</th>
+            <th>Stok</th>
+            <th>Harga</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="productList"></tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Riwayat Transaksi</h2>
+      <div id="transactionList"></div>
+    </div>
+  </div>
+
+  <script>
+    let products = [];
+    let transactions = [];
+
+    function updateStats() {
+      document.getElementById('totalProducts').innerText = products.length;
+      document.getElementById('totalStock').innerText = products.reduce((a,b)=>a+b.stock,0);
+      document.getElementById('totalCategories').innerText = new Set(products.map(p=>p.category)).size;
+    }
+
+    function addProduct() {
+      const name = document.getElementById('productName').value;
+      const category = document.getElementById('productCategory').value;
+      const stock = parseInt(document.getElementById('productStock').value);
+      const price = parseInt(document.getElementById('productPrice').value);
+
+      if(!name || !category || !stock || !price) return alert('Lengkapi data produk');
+
+      const product = { id: Date.now(), name, category, stock, price };
+      products.push(product);
+      transactions.unshift({ type:'Produk Baru', name, qty:stock, date:new Date().toLocaleString() });
+
+      document.getElementById('productName').value='';
+      document.getElementById('productCategory').value='';
+      document.getElementById('productStock').value='';
+      document.getElementById('productPrice').value='';
+
+      renderProducts();
+      renderTransactions();
+    }
+
+    function updateStock(id, type) {
+      const product = products.find(p=>p.id===id);
+      if(!product) return;
+
+      if(type==='in') product.stock +=1;
+      if(type==='out' && product.stock>0) product.stock -=1;
+
+      transactions.unshift({
+        type: type==='in' ? 'Barang Masuk':'Barang Keluar',
+        name: product.name,
+        qty:1,
+        date:new Date().toLocaleString()
+      });
+
+      renderProducts();
+      renderTransactions();
+    }
+
+    function deleteProduct(id) {
+      products = products.filter(p=>p.id!==id);
+      renderProducts();
+    }
+
+    function renderProducts() {
+      const keyword = document.getElementById('search').value.toLowerCase();
+      const list = document.getElementById('productList');
+      list.innerHTML='';
+
+      products.filter(p=>
+        p.name.toLowerCase().includes(keyword) ||
+        p.category.toLowerCase().includes(keyword)
+      ).forEach(product=>{
+        list.innerHTML += `
+          <tr>
+            <td>${product.name}</td>
+            <td>${product.category}</td>
+            <td>${product.stock}</td>
+            <td>Rp ${product.price.toLocaleString()}</td>
+            <td>
+              <button class="btn-in" onclick="updateStock(${product.id}, 'in')">+ Masuk</button>
+              <button class="btn-out" onclick="updateStock(${product.id}, 'out')">- Keluar</button>
+              <button class="btn-delete" onclick="deleteProduct(${product.id})">Hapus</button>
+            </td>
+          </tr>`;
+      });
+
+      updateStats();
+    }
+
+    function renderTransactions() {
+      const list = document.getElementById('transactionList');
+      list.innerHTML='';
+
+      transactions.forEach(trx=>{
+        list.innerHTML += `
+          <div class="transaction-item">
+            <strong>${trx.type} - ${trx.name}</strong><br>
+            Qty: ${trx.qty}<br>
+            <small>${trx.date}</small>
+          </div>`;
+      });
+    }
+  </script>
+</body>
+</html>
+```
